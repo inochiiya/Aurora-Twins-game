@@ -132,6 +132,7 @@ int main() {
 		loadimage(&img,"assets\\1.jpg",128,128);
 		//putimage(getwidth()/2 - 64, getheight()/2 -64, &img);
 
+
 		// 读取鼠标消息
 		ExMessage msg = { 0 };
 		while (peekmessage(&msg,EX_MOUSE | EX_KEY)) {
