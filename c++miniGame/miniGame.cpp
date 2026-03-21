@@ -26,6 +26,9 @@
 	float trail_y[10];   // 过去 10 帧的 Y 坐标
 };
 
+ enum State {
+	 MENU, PLAYING, GAMEOVER
+ };
 
 TCHAR* numtoarr(int n) {
 	static TCHAR arr[20];
@@ -34,24 +37,39 @@ TCHAR* numtoarr(int n) {
 }
 
 // 创建按钮
-void CreatButton(POINT pos, int width, int height, LPCTSTR text) {
-	setfillcolor(RGB(255, 255, 255));
+void CreatButton(POINT pos, int width, int height, LPCTSTR text, COLORREF col) {
+	setfillcolor(col);
 	fillroundrect(pos.x, pos.y, pos.x + width, pos.y + height, 10, 10);
+	setlinecolor(RGB(255, 255, 255)); // 白色边框
+	setlinestyle(PS_SOLID, 2);        // 2像素宽
+	roundrect(pos.x, pos.y, pos.x + width, pos.y + height, 10, 10);
 	settextcolor(BLACK);
 	settextstyle(24, 0, _T("微软雅黑"));
 	int tw = textwidth(text);
 	outtextxy(pos.x + (width - tw) / 2, pos.y + (height - textheight(text)) / 2, text);
 }
+// 点击区域检测
+// 判定点 (mx, my) 是否在左上角为 (x, y)，宽 w 高 h 的矩形内
+int isMouseInArea(int mx, int my, int x, int y, int w, int h) {
+	if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
+		return 1; // 在范围内
+	}
+	return 0; // 不在范围内
+}
 
 // 开始界面
-void DrawHello() {
+void DrawHello(int mouseX, int mouseY) {
 	POINT center = { getwidth() / 2, getheight() / 2 };
-
-
-	outtextxy(center.x - 100, 50, _T("双子星"));
-	CreatButton({ center.x - 60, center.y - 30 }, 120, 40, _T("开始游戏"));
-	CreatButton({ center.x - 60, center.y + 30 }, 120, 40, _T("查看教程"));
-	
+	COLORREF btnColor = RGB(255, 255, 255);
+	if (isMouseInArea(mouseX, mouseY, center.x - 60, center.y - 30, 120, 40)) {
+		btnColor = RGB(200, 200, 200); // 悬停变灰色
+	}
+	CreatButton({ center.x - 60, center.y - 30 }, 120, 40, _T("开始游戏"), btnColor);
+	btnColor = RGB(255, 255, 255);
+	if (isMouseInArea(mouseX, mouseY, center.x - 60, center.y + 30, 120, 40)) {
+		btnColor = RGB(200, 200, 200); // 悬停变灰色
+	}
+	CreatButton({ center.x - 60, center.y + 30 }, 120, 40, _T("查看教程"), btnColor);
 }
 
 // 背景音乐，原本打算使用的音频文件有点问题
@@ -127,12 +145,21 @@ void HandleInput(struct Twin* yang, struct Twin* yin) {
 		yang->x += moveSpeed;
 		yin->x -= moveSpeed; // 镜像逻辑：阳右阴左
 	}
+	if (yang->x < 0) yang->x = 0;
+	if (yang->x > 800) yang->x = 800;
+	if (yin->x < 0) yin->x = 0;
+	if (yin->x > 800) yin->x = 800;
+	if (yang->y < 0) yang->y = 0;
+	if (yang->y > 600) yang->y = 600;
+	if (yin->y < 0) yin->y = 0;
+	if (yin->y > 600) yin->y = 600;
 }
 
 int main() {
 	initgraph(800, 600, EX_NOMINIMIZE | EX_SHOWCONSOLE | EX_DBLCLKS); //EX_NOCLOSE | EX_NOMINIMIZE
 	setbkcolor(RGB(77, 194, 195));	
 	setbkmode(TRANSPARENT);
+	State gameState = MENU; // 游戏状态为菜单界面
 
 	// 帧率控制
 	int totalFrames = 0; // 总帧数
@@ -141,12 +168,15 @@ int main() {
 	clock_t startTime = 0;
 	clock_t frametime = 0;
 
-	Twin yang = { 100, 80, 5, COLOR_YANG_CORE }; // 初始化阳星
-	Twin yin = { 200, 80, 5, COLOR_YIN_CORE }; // 初始化阴星
+	Twin yang = { 400, 150, 5, COLOR_YANG_CORE }; // 初始化阳星
+	Twin yin = { 400, 450, 5, COLOR_YIN_CORE }; // 初始化阴星
 	int score = 0;
 
 	PlayBGM("assets\\M500003kNDLh2UjjDP.mp3");
 
+	int curMouseX = 0;
+	int curMouseY = 0;
+	ExMessage msg = { 0 };
 	// 游戏主循环
 	while (true)
 	{
@@ -155,34 +185,33 @@ int main() {
 
 		settextcolor(WHITE);
 		settextstyle(20, 0, _T("Arial"));
-		cleardevice();
 
+		cleardevice();
 		BeginBatchDraw(); // 双缓冲开始
 
 		outtextxy(20, 20, str);// 写入帧数信息
 
-		// 绘制游戏界面
-		DrawHello();
-
-		// 绘制游戏主角
-		DrawYangStar(&yang);
-		DrawYinStar(&yin);
-		
-		// 图片加载示例
-		//IMAGE img;
-		//loadimage(&img,"assets\\1.jpg",128,128);
-		//putimage(getwidth()/2 - 64, getheight()/2 -64, &img);
-
 		// 读取鼠标消息
-		ExMessage msg = { 0 };
 		while (peekmessage(&msg,EX_MOUSE | EX_KEY)) {
 			if (msg.message == WM_KEYDOWN && msg.vkcode == VK_ESCAPE) {
 				printf("[LOG]:按下 ESC 键，退出游戏\n"); 
 				exit(0);
 			}
 			switch (msg.message) {
+			case WM_MOUSEMOVE:
+				curMouseX = msg.x;
+				curMouseY = msg.y;
+				break;
 			case WM_LBUTTONDOWN: 
 				printf("[LOG]:鼠标左键按下 pos (%d, %d)\n", msg.x, msg.y);
+				if(isMouseInArea(msg.x, msg.y, getwidth() / 2 - 60, getheight() / 2 - 30, 120, 40) && gameState == MENU) {
+					printf("[LOG]:点击了开始游戏按钮\n");
+					gameState = PLAYING; // 切换到游戏状态
+				}
+				else if(isMouseInArea(msg.x, msg.y, getwidth() / 2 - 60, getheight() / 2 + 30, 120, 40)) {
+					printf("[LOG]:点击了查看教程按钮\n");
+					MessageBox(NULL, _T("这是一个双子星游戏，使用 WASD 键控制阳星移动，阴星会镜像同步。你的目的是尽可能的得到更高的分数！"), _T("游戏教程"), MB_OK);
+				}
 				break;
 			case WM_RBUTTONDOWN:
 				printf("[LOG]:鼠标右键按下 pos (%d, %d)\n", msg.x, msg.y);
@@ -196,8 +225,14 @@ int main() {
 			}
 		}
 
-		HandleInput(&yang, &yin);
-
+		if (gameState == MENU)
+			DrawHello(msg.x, msg.y);
+		else if (gameState == PLAYING) {
+			HandleInput(&yang, &yin);
+			DrawYangStar(&yang);
+			DrawYinStar(&yin);
+		}
+			
 		EndBatchDraw(); // 双缓冲结束
 
 		// 帧率控制
