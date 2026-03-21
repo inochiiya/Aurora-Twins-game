@@ -26,8 +26,5 @@
     <Media Include="assets\M500003kNDLh2UjjDP.mp3">
       <Filter>资源文件\assets</Filter>
     </Media>
-    <Media Include="assets\BV17qfbBoEhi.mp3">
-      <Filter>资源文件\assets</Filter>
-    </Media>
   </ItemGroup>
 </Project>

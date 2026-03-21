@@ -126,7 +126,6 @@
     <ClCompile Include="miniGame.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Media Include="assets\BV17qfbBoEhi.mp3" />
     <Media Include="assets\M500003kNDLh2UjjDP.mp3" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

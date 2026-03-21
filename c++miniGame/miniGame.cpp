@@ -54,7 +54,7 @@ void DrawHello() {
 	
 }
 
-// 背景音乐
+// 背景音乐，原本打算使用的音频文件有点问题
 void PlayBGM(const char* music) {
 	static int id = 0;
 	char cmd[256];
@@ -107,6 +107,28 @@ void DrawYinStar(struct Twin* yin) {
 	solidcircle((int)yin->x, (int)yin->y, 3); // 极小
 }
 
+void HandleInput(struct Twin* yang, struct Twin* yin) {
+	float moveSpeed = 5.0f; // 建议用 float，移动更平滑
+
+	// 检测 W 键 (注意：GetAsyncKeyState 使用的是虚拟键码)
+	if (GetAsyncKeyState('W') & 0x8000) {
+		yang->y -= moveSpeed;
+		yin->y -= moveSpeed; // 镜像同步
+	}
+	if (GetAsyncKeyState('S') & 0x8000) {
+		yang->y += moveSpeed;
+		yin->y += moveSpeed;
+	}
+	if (GetAsyncKeyState('A') & 0x8000) {
+		yang->x -= moveSpeed;
+		yin->x += moveSpeed; // 镜像逻辑：阳左阴右
+	}
+	if (GetAsyncKeyState('D') & 0x8000) {
+		yang->x += moveSpeed;
+		yin->x -= moveSpeed; // 镜像逻辑：阳右阴左
+	}
+}
+
 int main() {
 	initgraph(800, 600, EX_NOMINIMIZE | EX_SHOWCONSOLE | EX_DBLCLKS); //EX_NOCLOSE | EX_NOMINIMIZE
 	setbkcolor(RGB(77, 194, 195));	
@@ -121,6 +143,7 @@ int main() {
 
 	Twin yang = { 100, 80, 5, COLOR_YANG_CORE }; // 初始化阳星
 	Twin yin = { 200, 80, 5, COLOR_YIN_CORE }; // 初始化阴星
+	int score = 0;
 
 	PlayBGM("assets\\M500003kNDLh2UjjDP.mp3");
 
@@ -132,10 +155,11 @@ int main() {
 
 		settextcolor(WHITE);
 		settextstyle(20, 0, _T("Arial"));
-		outtextxy(20, 20, str);// 写入帧数信息
 		cleardevice();
 
 		BeginBatchDraw(); // 双缓冲开始
+
+		outtextxy(20, 20, str);// 写入帧数信息
 
 		// 绘制游戏界面
 		DrawHello();
@@ -152,6 +176,10 @@ int main() {
 		// 读取鼠标消息
 		ExMessage msg = { 0 };
 		while (peekmessage(&msg,EX_MOUSE | EX_KEY)) {
+			if (msg.message == WM_KEYDOWN && msg.vkcode == VK_ESCAPE) {
+				printf("[LOG]:按下 ESC 键，退出游戏\n"); 
+				exit(0);
+			}
 			switch (msg.message) {
 			case WM_LBUTTONDOWN: 
 				printf("[LOG]:鼠标左键按下 pos (%d, %d)\n", msg.x, msg.y);
@@ -166,24 +194,9 @@ int main() {
 				printf("[LOG]:鼠标左键双击 pos (%d, %d)\n", msg.x, msg.y);
 				break;
 			}
-			if (msg.message == WM_KEYDOWN) {
-				printf("[LOG]:键盘按下 vkcode (%d)\n", msg.vkcode);
-				switch (msg.vkcode) {
-				case 'W':
-					yang.y-=3;
-					break;
-				case 'S':
-					yang.y+=3;
-					break;
-				case 'A':
-					yang.x-=3;
-					break;
-				case 'D':
-					yang.x+=3;
-					break;
-				}
-			}
 		}
+
+		HandleInput(&yang, &yin);
 
 		EndBatchDraw(); // 双缓冲结束
 
