@@ -23,11 +23,11 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="assets\1.jpg">
+    <Media Include="assets\M500003kNDLh2UjjDP.mp3">
       <Filter>资源文件\assets</Filter>
-    </Image>
-    <Image Include="assets\16x16_wizardstrawhat.jpg">
+    </Media>
+    <Media Include="assets\BV17qfbBoEhi.mp3">
       <Filter>资源文件\assets</Filter>
-    </Image>
+    </Media>
   </ItemGroup>
 </Project>
