@@ -9,13 +9,12 @@
 #include <tchar.h>
 #pragma comment(lib, "winmm.lib")
 
-
 // 双星的颜色常量
-#define COLOR_YANG_OUTER  RGB(0, 150, 255) // 青色：暗部（光晕）
-#define COLOR_YANG_CORE   RGB(0, 255, 255) // 青色：亮部（核心）
-#define COLOR_YIN_OUTER   RGB(200, 0, 200) // 洋红：暗部（光晕）
-#define COLOR_YIN_CORE    RGB(255, 100, 255) // 洋红：亮部（核心）
-#define COLOR_CORE_WHITE  RGB(255, 255, 255) // 极亮中心点
+#define COLOR_YANG_OUTER  RGB(0, 150, 255) // 光晕:青色，暗
+#define COLOR_YANG_CORE   RGB(0, 255, 255) // 高亮核心:青色
+#define COLOR_YIN_OUTER   RGB(200, 0, 200) // 光晕：洋红，暗
+#define COLOR_YIN_CORE    RGB(255, 100, 255) // 高亮核心：杨红
+#define COLOR_CORE_WHITE  RGB(255, 255, 255) // 中心点：白
 
 // 全局变量
 bool bgmState = false; // 音乐开启状态
@@ -28,7 +27,7 @@ float currentDifficulty = 1.0f; // 难度系数
 	float x, y; // 位置
 	int radius; // 半径
 	COLORREF color;
-	// 用于制作尾迹，暂时废弃
+	// 用于制作尾迹
 	float trail_x[10];   // 过去 10 帧的 X 坐标
 	float trail_y[10];   // 过去 10 帧的 Y 坐标
 };
@@ -41,11 +40,15 @@ float currentDifficulty = 1.0f; // 难度系数
 	 int brightness; // 亮度
  }stars[STAR_COUNT];
 
- // 能量道具（吃到后打通间隔）
+ // 道具
+ enum PowerType {
+	 WALL_BREAKER,SHIELD,SLOW_DOWN // 消墙、盾、减速
+ };
  struct PowerUp {
 	 float x, y;
 	 int radius;
 	 bool active;
+	 //PowerType type;
 	 COLORREF color;
  } wallBreaker = { 0, 0, 12, false, RGB(255, 215, 0) }; // 金黄色，显眼
 
@@ -220,28 +223,30 @@ void DrawYinStar(struct Twin* yin) {
 	solidcircle((int)yin->x, (int)yin->y, 3); // 极小
 }
 
+// 处理键盘输入
 void HandleInput(struct Twin* yang, struct Twin* yin) {
 	float moveSpeed = 5.0f;
-
-	// === 玩家 1：阳星 (W A S D) ===
+	// 通过虚拟键判定，可以无冲
+	// 玩家 1(W A S D)
 	if (GetAsyncKeyState('W') & 0x8000) yang->y -= moveSpeed;
 	if (GetAsyncKeyState('S') & 0x8000) yang->y += moveSpeed;
 	if (GetAsyncKeyState('A') & 0x8000) yang->x -= moveSpeed;
 	if (GetAsyncKeyState('D') & 0x8000) yang->x += moveSpeed;
 
-	// === 玩家 2：阴星 (方向键) ===
+	// 玩家 2(方向键)
 	if (GetAsyncKeyState(VK_UP) & 0x8000)    yin->y -= moveSpeed;
 	if (GetAsyncKeyState(VK_DOWN) & 0x8000)  yin->y += moveSpeed;
 	if (GetAsyncKeyState(VK_LEFT) & 0x8000)  yin->x -= moveSpeed;
 	if (GetAsyncKeyState(VK_RIGHT) & 0x8000) yin->x += moveSpeed;
 
+	// 对Y轴限制
 	if (wallActive) {
-		// 有墙的时候：阳星不能超过 290，阴星不能小于 310
+		// 有墙的时候阳星不能超过 290，阴星不能小于 310
 		if (yang->y > 290) yang->y = 290;
 		if (yin->y < 310) yin->y = 310;
 	}
 	else {
-		// 没墙的时候：都可以全屏移动
+		// 没墙
 		if (yang->y > 600) yang->y = 600;
 		if (yin->y < 0) yin->y = 0;
 	}
@@ -255,6 +260,7 @@ void HandleInput(struct Twin* yang, struct Twin* yin) {
 	if (yin->x > 800) yin->x = 800;
 }
 
+// 更新尾迹坐标
 void UpdateTrails(struct Twin* star) {
 	for (int i = 9; i > 0; i--) {
 		star->trail_x[i] = star->trail_x[i - 1];
@@ -265,13 +271,14 @@ void UpdateTrails(struct Twin* star) {
 }
 void DrawTrails(struct Twin* star, COLORREF col) {
 	for (int i = 0; i < 10; i++) {
-		// 透明度模拟：颜色逐渐变暗
+		// 颜色逐渐变暗
 		int alpha = 255 - (i * 25);
 		if (alpha < 0) alpha = 0;
 		setfillcolor(RGB(GetRValue(col) * alpha / 255, GetGValue(col) * alpha / 255, GetBValue(col) * alpha / 255));
 		solidcircle((int)star->trail_x[i], (int)star->trail_y[i], star->radius - i / 2);
 	}
 }
+
 // 判断小球是否与障碍物重叠
 bool CheckCollision(struct Twin* star, struct Obstacle* ob) {
 	if (!ob->active) return false;
@@ -288,7 +295,7 @@ bool CheckCollision(struct Twin* star, struct Obstacle* ob) {
 // 生成与更新障碍物
 void UpdateObstacles() {
 	float obsSpeed = 6.0f * currentDifficulty; // 障碍物飞过来的速度
-	// 计时器：每隔 45 帧生成一个新障碍物
+	// 每隔 45 帧生成一个新障碍物，大约0.75秒
 	spawnTimer++;
 	if (spawnTimer >= 45) {
 		spawnTimer = 0;
@@ -340,8 +347,8 @@ void UpdateGameLogic(struct Twin* yang, struct Twin* yin) {
 	float dist = fabsf(yang->y - yin->y);
 	if (dist < 100) totalScore += 0.1f;
 
-	// 每过500帧，加速速速速速
-	currentDifficulty = 1.0f + (float)totalScore / 1000.0f;
+	// 上难度了
+	currentDifficulty = 1.0f + (float)totalScore / 500.0f;
 }
 void DrawHUD() {
     settextcolor(YELLOW);
@@ -475,8 +482,8 @@ int main() {
 			setbkcolor(RGB(10, 10, 25));
 			DrawStars(); // 绘制背景
 			if (wallActive) {
-				setfillcolor(RGB(100, 100, 100)); // 灰色墙壁
-				fillrectangle(0, 295, 800, 305);
+				setfillcolor(RGB(100, 100, 100)); // 灰色
+				fillrectangle(0, 295, 800, 305); // 高度10
 			}
 
 			sprintf(str, "Frame: %d", totalFrames++/60);
