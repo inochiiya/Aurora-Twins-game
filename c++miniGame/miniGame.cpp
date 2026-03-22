@@ -13,7 +13,7 @@
 #define COLOR_YANG_OUTER  RGB(0, 150, 255) // 光晕:青色，暗
 #define COLOR_YANG_CORE   RGB(0, 255, 255) // 高亮核心:青色
 #define COLOR_YIN_OUTER   RGB(200, 0, 200) // 光晕：洋红，暗
-#define COLOR_YIN_CORE    RGB(255, 100, 255) // 高亮核心：杨红
+#define COLOR_YIN_CORE    RGB(255, 100, 255) // 高亮核心：红
 #define COLOR_CORE_WHITE  RGB(255, 255, 255) // 中心点：白
 
 // 全局变量
@@ -46,7 +46,7 @@ struct Star {
 
 // 道具
 enum PowerType {
-	WALL_BREAKER, SHIELD, SLOW_DOWN // 消墙、盾、减速
+	WALL_BREAKER, SHIELD, SLOW_DOWN, CLEAR_OBS // 消墙、盾、减速、消屏
 };
 struct PowerUp {
 	float x, y;
@@ -55,7 +55,7 @@ struct PowerUp {
 	PowerType type;
 	COLORREF color;
 };
-#define MAX_POWERS 3 // 同屏最大道具数量
+#define MAX_POWERS 4 // 同屏最大道具数量
 struct PowerUp powers[MAX_POWERS] = { 0 };
 
 // 障碍物
@@ -65,7 +65,7 @@ struct Obstacle {
 	bool active;     // 是否在屏幕上（存活状态）
 	COLORREF color;  // 障碍物颜色
 };
-#define MAX_OBS 32   // 同屏最多 8 个障碍物
+#define MAX_OBS 158   // 同屏最多 8 个障碍物
 struct Obstacle obs[MAX_OBS] = { 0 };
 int spawnTimer = 0; // 生成计时器
 
@@ -309,27 +309,38 @@ bool CheckCollision(struct Twin* star, struct Obstacle* ob) {
 
 // 生成与更新障碍物
 void UpdateObstacles() {
-	float baseSpeed = 6.0f * currentDifficulty; // 基础速度
+	float baseSpeed = 6.0f * currentDifficulty; // 基础位移速度
 	float obsSpeed = (slowDownTimer > 0) ? (baseSpeed * 0.5f) : baseSpeed;
+	int spawnInterval = 45 - (int)((currentDifficulty - 1.0f) * 10); // 蜜汁精调小难度
 	if (slowDownTimer > 0)
-		slowDownTimer--;
+		slowDownTimer--;	// 减速计时器
+	if (spawnInterval < 15)
+		spawnInterval = 15; // 别太离谱
 
 	// 每隔 45 帧生成一个新障碍物，大约0.75秒
 	spawnTimer++;
-	if (spawnTimer >= 45) {
-		spawnTimer = 0;
-		// 找非激活状态空位生成
-		for (int i = 0; i < MAX_OBS; i++) {
-			if (!obs[i].active) {
-				obs[i].active = true;
-				obs[i].w = 30 + rand() % 50; // 宽度随机 30~80
-				obs[i].h = 30 + rand() % 50; // 高度随机 30~80
-				obs[i].x = 800; // 从最右侧出现
-				// Y轴随机
-				obs[i].y = rand() % (600 - (int)obs[i].h);
 
-				obs[i].color = RGB(255, 50, 50);
-				break; // 生成一个就够
+	if (spawnTimer >= spawnInterval) {
+		spawnTimer = 0;
+
+		// 桀桀桀，故障机器人++
+		int spawnCount = 1; // 先不改留条活路 补充：假如改了真没活路了障碍物太大了还连着来
+		if(spawnCount >= 3)
+			spawnCount = 3;
+
+		for (int k = 0; k < spawnCount; k++) {
+			// 找非激活状态空位生成
+			for (int i = 0; i < MAX_OBS; i++) {
+				if (!obs[i].active) {
+					obs[i].active = true;
+					obs[i].w = 30 + rand() % 50; // 宽度随机 30~80
+					obs[i].h = 30 + rand() % 50; // 高度随机 30~80
+					obs[i].x = 800 + rand() % 100; // 稍微错开
+					obs[i].y = rand() % (600 - (int)obs[i].h);
+
+					obs[i].color = RGB(255, 50, 50);
+					break; // 生成一个就够
+				}
 			}
 		}
 	}
@@ -395,27 +406,32 @@ void UpdatePowers(struct Twin* yang, struct Twin* yin, clock_t totalFrames) {
 	if (totalFrames % 300 == 0) {
 		for (int i = 0; i < MAX_POWERS; i++) {
 			if (!powers[i].active) {
+				// 随记道具类型
+				// 可能大概有BUG，比如重复道具但是检测到不满足条件不会生成？
+				int type;
+				while(true) {
+					type = rand() % 4;
+					if (!wallActive && type == WALL_BREAKER)
+						continue;
+					break;
+				}
 				powers[i].active = true;
 				powers[i].x = 800;
 				powers[i].y = 100 + rand() % 400; // 随机Y轴
 				powers[i].radius = 12;
-				// 随记道具类型
-				// 可能大概有BUG，比如重复道具但是检测到不满足条件不会生成？
-				int type = 2; // 默认减速
-				if(wallActive == 1)
-					type = rand() % 3; // 有墙时三种道具都有可能
-				if(wallActive == 0)
-					type = 1 + rand() % 2; // 没墙了就不生成破墙道具
-
 				powers[i].type = (PowerType)type;
-				if (type == 0) {
+
+				if (type == WALL_BREAKER) {
 					powers[i].color = RGB(255, 215, 0); // 破！
 				}
-				else if (type == 1 && !yangHasShield && !yinHasShield) {
+				else if (type == SHIELD) {
 					powers[i].color = RGB(0, 255, 150); // 安如磐石
 				}
-				else {
+				else if (type == SLOW_DOWN) {
 					powers[i].color = RGB(200, 50, 255); // 紫色心情减速
+				}
+				else if (type == CLEAR_OBS) {
+					powers[i].color = RGB(50, 200, 255); // 青涩清除障碍
 				}
 				printf("[LOG]:生成道具 %d 类型 %d\n", i, type);
 				break;
@@ -434,10 +450,12 @@ void UpdatePowers(struct Twin* yang, struct Twin* yin, clock_t totalFrames) {
 			// 碰撞检测
 			bool caughtByYang = (abs(yang->x - powers[i].x) < 20 && abs(yang->y - powers[i].y) < 20);
 			bool caughtByYin = (abs(yin->x - powers[i].x) < 20 && abs(yin->y - powers[i].y) < 20);
+
 			if (caughtByYang || caughtByYin) {
 				printf("[LOG]:道具 %d 被 %s 捕获\n", i, caughtByYang ? "阳星" : "阴星");
-				totalScore += 100;
+				totalScore += 50;
 				SpawnExplosion(powers[i].x, powers[i].y, powers[i].color); // 触发粒子特效
+
 				switch (powers[i].type) {
 				case WALL_BREAKER:
 					wallActive = false; // 破墙
@@ -452,7 +470,17 @@ void UpdatePowers(struct Twin* yang, struct Twin* yin, clock_t totalFrames) {
 					slowDownTimer = 180; // 3秒减速
 					printf("[LOG]:减速效果触发\n");
 					break;
+				case CLEAR_OBS:
+					for (int i = 0; i < MAX_OBS; i++) {
+						if (obs[i].active) {
+							obs[i].active = false; // 清除所有障碍物
+							SpawnExplosion(obs[i].x + obs[i].w / 2, obs[i].y + obs[i].h / 2, obs[i].color); // 特效
+						}
+					}
+					printf("[LOG]:清除所有障碍物\n");
+					break;
 				}
+				
 				powers[i].active = false; // 道具被捕获后消失
 			}
 			// 回收逻辑
@@ -499,7 +527,7 @@ void DrawHUD() {
 	outtextxy(20, 50, scoreStr);
 	settextcolor(WHITE);
 	settextstyle(20, 0, _T("Arial"));
-	char tipsStr[64] = "按 ESC 键暂停/继续，按 R 键重置游戏";
+	char tipsStr[64] = "按 ESC 键暂停/继续";
 	outtextxy((getwidth() - textwidth(tipsStr) - 10), textheight(tipsStr) + 5, tipsStr);
 }
 
@@ -541,7 +569,7 @@ int main() {
 			if (msg.message == WM_KEYDOWN && msg.vkcode == VK_ESCAPE) {
 				if (gameState == PLAYING) {
 					gameState = PAUSE; // 切换到暂停状态
-					printf("[LOG]:按下 ESC 键，游戏暂停\n");
+					printf("[LOG]:游戏状态切换到PAUSE\n");
 				}
 				else if (gameState == PAUSE) {
 					gameState = PLAYING; // 切换回游戏状态
@@ -709,11 +737,11 @@ int main() {
 			outtextxy(getwidth() / 2 - 100, getheight() / 2 - 150, _T("游戏结束！"));
 			sprintf(tips, "最终得分：%.0f", totalScore);
 			outtextxy((getwidth() - textwidth(tips)) / 2, getheight() / 2 - 100, tips);
-			if (totalFrames /60 < 10)
+			if (totalFrames /60 < 30)
 				sprintf(tips,"总共坚持了 %d S,不会是一个人玩的吧？", totalFrames / 60);
-			else if (totalFrames / 60 < 30)
-				sprintf(tips,"总共坚持了 %d S, 应该看到了全部彩蛋？", totalFrames / 60);
 			else if (totalFrames / 60 < 60)
+				sprintf(tips,"总共坚持了 %d S, 应该看到了全部彩蛋？", totalFrames / 60);
+			else if (totalFrames / 60 < 90)
 				sprintf(tips,"总共坚持了 %d S, 是个游戏糕手", totalFrames / 60);
 			else
 				sprintf(tips, "{\"comment\":\"开了\",\"Time\":%d s}", totalFrames / 60);
