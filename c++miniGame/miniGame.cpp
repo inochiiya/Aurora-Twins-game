@@ -17,10 +17,12 @@
 #define COLOR_YIN_CORE    RGB(255, 100, 255) // 洋红：亮部（核心）
 #define COLOR_CORE_WHITE  RGB(255, 255, 255) // 极亮中心点
 
-bool bgmState = false; // 音乐开关
+// 全局变量
+bool bgmState = false; // 音乐开启状态
 bool wallActive = true; // 隔离墙是否激活
 float totalScore = 0; // 计分
 float currentDifficulty = 1.0f; // 难度系数
+
 // 双星	
  struct Twin {
 	float x, y; // 位置
@@ -352,9 +354,8 @@ void DrawHUD() {
 int main() {
 	srand((unsigned)time(NULL));
 	initgraph(800, 600, EX_NOMINIMIZE | EX_SHOWCONSOLE); //EX_NOCLOSE | EX_NOMINIMIZE
-	setbkcolor(RGB(77, 194, 195));	
 	setbkmode(TRANSPARENT);
-	State gameState = MENU; // 游戏状态为菜单界面
+	State gameState = MENU; // 初始为菜单界面
 
 	// 帧率控制
 	int totalFrames = 0; // 总帧数
@@ -388,13 +389,29 @@ int main() {
 			if (msg.message == WM_KEYDOWN && msg.vkcode == VK_ESCAPE) {
 				if (gameState == PLAYING) {
 					gameState = PAUSE; // 切换到暂停状态
+					printf("[LOG]:按下 ESC 键，游戏暂停\n");
 				} else if (gameState == PAUSE) {
 					gameState = PLAYING; // 切换回游戏状态
+					printf("[LOG]: 按下 ESC键，回到PLAYING\n");
 				}
 				else if (gameState == GAMEOVER) {
 					printf("[LOG]:按下 ESC 键，退出游戏\n"); 
 					exit(0);
 				}
+			}
+			if(msg.message == WM_KEYDOWN && msg.vkcode == 'R' && gameState == GAMEOVER) {
+				printf("[LOG]:按下 R 键，重置游戏\n");
+				// 重置游戏状态
+				gameState = MENU;
+				printf("[LOG]:游戏状态切换到 MENU\n");
+				totalScore = 0;
+				currentDifficulty = 1.0f;
+				totalFrames = 0;
+				yang.x = 400; yang.y = 150;
+				yin.x = 400; yin.y = 450;
+				for (int i = 0; i < MAX_OBS; i++) obs[i].active = false; // 清除障碍物
+				wallActive = true;    // 间隔恢复
+				wallBreaker.active = true;
 			}
 
 			switch (msg.message) {
@@ -408,6 +425,7 @@ int main() {
 					if (isMouseInArea(msg.x, msg.y, getwidth() / 2 - 60, getheight() / 2 - 30, 120, 40)) {
 						printf("[LOG]:点击了开始游戏按钮\n");
 						gameState = PLAYING; // 切换到游戏状态
+						printf("[LOG]:游戏状态切换到 PLAYING\n");
 					}
 					else if (isMouseInArea(msg.x, msg.y, getwidth() / 2 - 60, getheight() / 2 + 30, 120, 40)) {
 						printf("[LOG]:点击了查看教程按钮\n");
@@ -415,6 +433,7 @@ int main() {
 					}
 					else if (isMouseInArea(msg.x, msg.y, getwidth() - 60, 30, 45, 25)) {
 						printf("[LOG]:点击了音乐开关\n");
+						printf("[LOG]:当前 bgmState '%d'\n", bgmState);
 						PlayBGM("assets/M500003kNDLh2UjjDP.mp3");
 					}
 				}
@@ -424,9 +443,11 @@ int main() {
 					if (isMouseInArea(msg.x, msg.y, center.x - 60, center.y - 80, 120, 40)) {
 						printf("[LOG]:点击了继续游戏按钮\n");
 						gameState = PLAYING; // 切换回游戏状态
+						printf("[LOG]:游戏状态切换到 PLAYING\n");
 					}
 					else if (isMouseInArea(msg.x, msg.y, center.x - 60, center.y - 20, 120, 40)) {
 						printf("[LOG]:点击了音乐开关\n");
+						printf("[LOG]:当前 bgmState '%d'\n", bgmState);
 						PlayBGM("assets/M500003kNDLh2UjjDP.mp3");
 					}
 					else if (isMouseInArea(msg.x, msg.y, center.x - 60, center.y + 40, 120, 40)) {
@@ -437,15 +458,14 @@ int main() {
 				break;
 			case WM_RBUTTONDOWN:
 				break;
-			case WM_MOUSEWHEEL:
-				printf("[LOG]:鼠标滚轮滚动 pos (%d, %d) dir (%d)\n", msg.x, msg.y, msg.wheel);
-				break;
 			}
 		}
 
 		// 菜单界面逻辑 
-		if (gameState == MENU)
+		if (gameState == MENU) {
+			setbkcolor(RGB(77, 194, 195));
 			DrawHello(msg.x, msg.y);
+		}
 		// 暂停界面逻辑
 		else if (gameState == PAUSE) {
 			DrawPause(msg.x, msg.y);
@@ -470,11 +490,12 @@ int main() {
 			UpdateObstacles(); // 更新障碍物坐标并随机生成
 			UpdateGameLogic(&yang, &yin); // 更新分数和难度
 			DrawHUD();
-			// 每 300 帧生成一次道具
-			if (wallActive && totalFrames % 300 == 0 && !wallBreaker.active) {
+			// 每 500 帧生成一次道具
+			if (wallActive && totalFrames % 500 == 0 && !wallBreaker.active) {
 				wallBreaker.active = true;
 				wallBreaker.x = 800;
 				wallBreaker.y = 100 + rand() % 400; // 随机位置
+				printf("[LOG]: 道具生成 TIME: %d\n", totalFrames / 60);
 			}
 			if (wallBreaker.active) {
 				wallBreaker.x -= 3.0f; // 道具向左飘
@@ -485,6 +506,7 @@ int main() {
 				if ((abs(yang.x - wallBreaker.x) < 15 && abs(yang.y - wallBreaker.y) < 15) ||
 					(abs(yin.x - wallBreaker.x) < 15 && abs(yin.y - wallBreaker.y) < 15)) {
 					wallActive = false;    // 墙壁消失
+					printf("[LOG]:道具被吃掉，墙壁消失\n");
 					wallBreaker.active = false;
 				}
 				if (wallBreaker.x < 0) wallBreaker.active = false; // 飞出屏幕回收
@@ -495,6 +517,7 @@ int main() {
 			for (int i = 0; i < MAX_OBS; i++) {
 				if (CheckCollision(&yang, &obs[i]) || CheckCollision(&yin, &obs[i])) {
 					gameState = GAMEOVER;
+					printf("[LOG]: 角色死亡\n");
 				}
 			}
 
@@ -504,9 +527,13 @@ int main() {
 			DrawYinStar(&yin);
 		// 游戏结束界面
 		} else if (gameState == GAMEOVER) {
-			settextcolor(RED);
+			char finalScore[50];
+			sprintf(finalScore, "最终得分：%.0f", totalScore);
+			settextcolor(WHITE);
 			settextstyle(40, 0, _T("Arial"));
-			outtextxy(getwidth() / 2 - 100, getheight() / 2 - 20, _T("游戏结束！"));
+			outtextxy(getwidth() / 2 - 100, getheight() / 2 - 100, _T("游戏结束！"));
+			outtextxy(getwidth() / 2 - 100, getheight() / 2 - 50, finalScore);
+			outtextxy(getwidth() / 2 - 150, getheight() / 2 + 20, _T("按 R 键重新开始"));
 		}
 			
 		EndBatchDraw(); // 双缓冲结束，画面绘制结束
