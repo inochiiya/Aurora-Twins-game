@@ -157,7 +157,7 @@ void ShowInochiLogo() {
 
 	printf("    >> TBR GAME PROJECT - Developer Mode Active\n");
 	printf("    >> Welcome back, Inochi. Current UID: 1145\n"); // 
-	printf("    >> GitHub: https://github.com/inochiiya/Aurora-Twins-game/\n");
+	printf("    >> GitHub: https://github.com/inochiiya/Two-Ball-Run\n");
 	printf("    ==================================================\n\n");
 }
 
