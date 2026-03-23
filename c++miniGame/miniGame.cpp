@@ -11,16 +11,18 @@
 
 // 双星的颜色常量
 #define COLOR_YANG_OUTER  RGB(0, 150, 255) // 光晕:青色，暗
-#define COLOR_YANG_CORE   RGB(0, 255, 255) // 高亮核心:青色
+#define COLOR_YANG_CORE   RGB(0, 255, 255) // 核心:青色,高亮
 #define COLOR_YIN_OUTER   RGB(200, 0, 200) // 光晕：洋红，暗
-#define COLOR_YIN_CORE    RGB(255, 100, 255) // 高亮核心：红
+#define COLOR_YIN_CORE    RGB(255, 100, 255) // 核心：红, 高亮
 #define COLOR_CORE_WHITE  RGB(255, 255, 255) // 中心点：白
 
 // 全局变量
+bool ShowConsole = false; // 控制台可见状态
 bool bgmState = false; // 音乐开启状态
 bool wallActive = true; // 隔离墙是否激活
 float totalScore = 0; // 计分
 float currentDifficulty = 1.0f; // 难度系数
+
 // 道具增益效果
 bool yangHasShield = false; // 阳星是否有盾
 bool yinHasShield = false;  // 阴星是否有盾
@@ -140,9 +142,38 @@ void PlayBGM(const char* music) {
 	}
 }
 
+// PRINT CONSOLE LOGO EGG
+void ShowInochiLogo() {
+	printf("\n");
+    printf("    ===============================================\n");
+    printf("     ___                      _      _  \n");
+    printf("    |_ _|  _ __    ___   ___ | |__  (_) \n");
+    printf("     | |  | '_ \\  / _ \\ / __|| '_ \\ | | \n");
+    printf("     | |  | | | || (_) | (__ | | | || | \n");
+    printf("    |___| |_| |_| \\___/ \\___||_| |_||_| \n");
+	printf("\n");
+    printf("    ===============================================\n");
+
+	printf("    >> TBR GAME PROJECT - Developer Mode Active\n");
+	printf("    >> Welcome back, Inochi. Current UID: 1145\n"); // 
+	printf("    ==================================================\n\n");
+}
+
 // 绘制开始界面
 void DrawHello(int mouseX, int mouseY) {
 	POINT center = { getwidth() / 2, getheight() / 2 };
+
+	// 标题
+	settextcolor(COLOR_YANG_CORE);
+	settextstyle(64, 0, "微软雅黑", 0, 0, 1000, false, false, false); // 粗字体
+	int titleWidth = textwidth("两 球 一 败 涂 地");
+	outtextxy(center.x - titleWidth / 2, center.y - 150, "两 球 一 败 涂 地");
+	// 副标题
+	settextcolor(RGB(220, 220, 220));
+	settextstyle(20, 0, "Arial", 0, 0, 600, false, false, false);
+	int subTitleWidth = textwidth("T W O    B A L L    R U N");
+	outtextxy(center.x - subTitleWidth / 2, center.y - 70, "T W O    B A L L    R U N");
+
 	COLORREF btnColor = RGB(255, 255, 255);
 	if (isMouseInArea(mouseX, mouseY, center.x - 60, center.y - 30, 120, 40)) {
 		btnColor = RGB(200, 200, 200); // 悬停变灰色
@@ -158,6 +189,12 @@ void DrawHello(int mouseX, int mouseY) {
 	if (bgmState)
 		bgmBtnColor = RGB(100, 255, 100);
 	CreatButton({ getwidth() - 60, 30 }, 45, 25, "音乐", bgmBtnColor);
+
+	// 水印
+	COLORREF waterMarkColor = isMouseInArea(mouseX, mouseY, getwidth() - 85, getheight() - 30, 80, 20) ? RGB(150, 150, 150) : RGB(80, 80, 80);
+	settextcolor(waterMarkColor);
+	settextstyle(16, 0, _T("Consolas"));
+	outtextxy(getwidth() - 85, getheight() - 30, _T("@Inochi"));
 }
 
 // 绘制暂停菜单
@@ -311,7 +348,7 @@ bool CheckCollision(struct Twin* star, struct Obstacle* ob) {
 void UpdateObstacles() {
 	float baseSpeed = 6.0f * currentDifficulty; // 基础位移速度
 	float obsSpeed = (slowDownTimer > 0) ? (baseSpeed * 0.5f) : baseSpeed;
-	int spawnInterval = 45 - (int)((currentDifficulty - 1.0f) * 10); // 蜜汁精调小难度
+	int spawnInterval = 45 - (int)((currentDifficulty - 1.0f) *8); // 蜜汁精调小难度
 	if (slowDownTimer > 0)
 		slowDownTimer--;	// 减速计时器
 	if (spawnInterval < 15)
@@ -325,9 +362,8 @@ void UpdateObstacles() {
 
 		// 桀桀桀，故障机器人++
 		int spawnCount = 1; // 先不改留条活路 补充：假如改了真没活路了障碍物太大了还连着来
-		if(spawnCount >= 3)
-			spawnCount = 3;
-
+	/*	if(spawnCount >= 3)
+			spawnCount = 3;*/
 		for (int k = 0; k < spawnCount; k++) {
 			// 找非激活状态空位生成
 			for (int i = 0; i < MAX_OBS; i++) {
@@ -336,7 +372,7 @@ void UpdateObstacles() {
 					obs[i].w = 30 + rand() % 50; // 宽度随机 30~80
 					obs[i].h = 30 + rand() % 50; // 高度随机 30~80
 					obs[i].x = 800 + rand() % 100; // 稍微错开
-					obs[i].y = rand() % (600 - (int)obs[i].h);
+					obs[i].y = rand() % (600 - (int)obs[i].h); // 无死角躲上下边界也有概率寄
 
 					obs[i].color = RGB(255, 50, 50);
 					break; // 生成一个就够
@@ -533,7 +569,10 @@ void DrawHUD() {
 
 int main() {
 	srand((unsigned)time(NULL));
-	initgraph(800, 600, EX_NOMINIMIZE | EX_SHOWCONSOLE); //EX_NOCLOSE | EX_NOMINIMIZE
+	//if (ShowConsole) // 没效果
+	//	initgraph(800, 600, EX_NOMINIMIZE | EX_SHOWCONSOLE); //EX_NOCLOSE | EX_NOMINIMIZE
+	//else
+		initgraph(800, 600, EX_NOMINIMIZE);
 	setbkmode(TRANSPARENT);
 	State gameState = MENU; // 初始为菜单界面
 
@@ -607,6 +646,26 @@ int main() {
 			case WM_LBUTTONDOWN:
 				// 菜单时
 				if (gameState == MENU) {
+					if (isMouseInArea(msg.x, msg.y, getwidth() - 85, getheight() - 30, 80, 20)) {
+						ShowConsole = !ShowConsole;
+						HWND hwndConsole = GetConsoleWindow(); // 这里是获取控制台窗口句柄
+						if (ShowConsole) {
+							ShowWindow(hwndConsole, SW_SHOW);
+							system("cls");
+							ShowInochiLogo();
+							//printf("    =====================================\n");
+							printf("    [SYSTEM]: 开发者控制台已开启\n");
+							printf("    [SYSTEM]: 欢迎来到控制台,INOCHI\n");
+							printf("    =====================================\n");
+							HWND hwnd = GetHWnd();
+							MessageBox(hwnd, _T("Debug Console Activated!\nWelcome back, Inochi."), _T("Easter Egg"), MB_OK | MB_ICONINFORMATION);
+						}
+						else {
+							ShowWindow(hwndConsole, SW_HIDE);
+							HWND hwnd = GetHWnd();
+							MessageBox(hwnd, _T("Debug Console Deactivated."), _T("Easter Egg"), MB_OK);
+						}
+					}
 					if (isMouseInArea(msg.x, msg.y, getwidth() / 2 - 60, getheight() / 2 - 30, 120, 40)) {
 						printf("[LOG]:点击了开始游戏按钮\n");
 						gameState = PLAYING; // 切换到游戏状态
@@ -614,7 +673,8 @@ int main() {
 					}
 					else if (isMouseInArea(msg.x, msg.y, getwidth() / 2 - 60, getheight() / 2 + 30, 120, 40)) {
 						printf("[LOG]:点击了查看教程按钮\n");
-						MessageBox(NULL, _T("双人控制双星，躲避障碍并尽可能获取更高的分数"), _T("游戏教程"), MB_OK);
+						HWND hwnd = GetHWnd();
+						MessageBox(hwnd, _T("双人控制两球，躲避障碍并尽可能获取更高的分数"), ("游戏教程"), MB_OK);
 					}
 					else if (isMouseInArea(msg.x, msg.y, getwidth() - 60, 30, 45, 25)) {
 						printf("[LOG]:点击了音乐开关\n");
@@ -696,6 +756,8 @@ int main() {
 
 			// 死亡判定
 			for (int i = 0; i < MAX_OBS; i++) {
+				if (!obs[i].active)
+					continue;
 				if (CheckCollision(&yang, &obs[i])) {
 					if (yangHasShield) {
 						yangHasShield = false; // 盾抵消一次碰撞
@@ -742,7 +804,7 @@ int main() {
 			else if (totalFrames / 60 < 60)
 				sprintf(tips,"总共坚持了 %d S, 应该看到了全部彩蛋？", totalFrames / 60);
 			else if (totalFrames / 60 < 90)
-				sprintf(tips,"总共坚持了 %d S, 是个游戏糕手", totalFrames / 60);
+				sprintf(tips,"总共坚持了 %d S, 不要小瞧我们的羁绊啊！！！", totalFrames / 60);
 			else
 				sprintf(tips, "{\"comment\":\"开了\",\"Time\":%d s}", totalFrames / 60);
 			outtextxy((getwidth() - textwidth(tips)) / 2, getheight() / 2 - 50, tips);
