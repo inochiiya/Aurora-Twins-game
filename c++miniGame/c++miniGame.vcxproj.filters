@@ -18,7 +18,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="miniGame.cpp">
+    <ClCompile Include="Two Ball Run .cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -26,5 +26,20 @@
     <Media Include="assets\M500003kNDLh2UjjDP.mp3">
       <Filter>资源文件\assets</Filter>
     </Media>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="c++miniGame.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\icon.ico">
+      <Filter>资源文件</Filter>
+    </Image>
   </ItemGroup>
 </Project>

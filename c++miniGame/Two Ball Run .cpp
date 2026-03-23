@@ -1,4 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
+#include "resource.h"
 #include <windows.h>
 #include <mmsystem.h>
 #include <conio.h>
@@ -9,7 +10,7 @@
 #include <tchar.h>
 #pragma comment(lib, "winmm.lib")
 
-// 双星的颜色常量
+// 两个球的颜色常量
 #define COLOR_YANG_OUTER  RGB(0, 150, 255) // 光晕:青色，暗
 #define COLOR_YANG_CORE   RGB(0, 255, 255) // 核心:青色,高亮
 #define COLOR_YIN_OUTER   RGB(200, 0, 200) // 光晕：洋红，暗
@@ -145,14 +146,14 @@ void PlayBGM(const char* music) {
 // PRINT CONSOLE LOGO EGG
 void ShowInochiLogo() {
 	printf("\n");
-    printf("    ===============================================\n");
-    printf("     ___                      _      _  \n");
-    printf("    |_ _|  _ __    ___   ___ | |__  (_) \n");
-    printf("     | |  | '_ \\  / _ \\ / __|| '_ \\ | | \n");
-    printf("     | |  | | | || (_) | (__ | | | || | \n");
-    printf("    |___| |_| |_| \\___/ \\___||_| |_||_| \n");
+	printf("    ===============================================\n");
+	printf("     ___                      _      _  \n");
+	printf("    |_ _|  _ __    ___   ___ | |__  (_) \n");
+	printf("     | |  | '_ \\  / _ \\ / __|| '_ \\ | | \n");
+	printf("     | |  | | | || (_) | (__ | | | || | \n");
+	printf("    |___| |_| |_| \\___/ \\___||_| |_||_| \n");
 	printf("\n");
-    printf("    ===============================================\n");
+	printf("    ===============================================\n");
 
 	printf("    >> TBR GAME PROJECT - Developer Mode Active\n");
 	printf("    >> Welcome back, Inochi. Current UID: 1145\n"); // 
@@ -166,7 +167,7 @@ void DrawHello(int mouseX, int mouseY) {
 	// 标题
 	settextcolor(COLOR_YANG_CORE);
 	settextstyle(64, 0, "微软雅黑", 0, 0, 1000, false, false, false); // 粗字体
-	int titleWidth = textwidth("两 球 一 败 涂 地");
+	int titleWidth = textwidth(_T("两 球 一 败 涂 地"));
 	outtextxy(center.x - titleWidth / 2, center.y - 150, "两 球 一 败 涂 地");
 	// 副标题
 	settextcolor(RGB(220, 220, 220));
@@ -348,7 +349,7 @@ bool CheckCollision(struct Twin* star, struct Obstacle* ob) {
 void UpdateObstacles() {
 	float baseSpeed = 6.0f * currentDifficulty; // 基础位移速度
 	float obsSpeed = (slowDownTimer > 0) ? (baseSpeed * 0.5f) : baseSpeed;
-	int spawnInterval = 45 - (int)((currentDifficulty - 1.0f) *8); // 蜜汁精调小难度
+	int spawnInterval = 45 - (int)((currentDifficulty - 1.0f) * 8); // 蜜汁精调小难度
 	if (slowDownTimer > 0)
 		slowDownTimer--;	// 减速计时器
 	if (spawnInterval < 15)
@@ -362,8 +363,8 @@ void UpdateObstacles() {
 
 		// 桀桀桀，故障机器人++
 		int spawnCount = 1; // 先不改留条活路 补充：假如改了真没活路了障碍物太大了还连着来
-	/*	if(spawnCount >= 3)
-			spawnCount = 3;*/
+		/*	if(spawnCount >= 3)
+				spawnCount = 3;*/
 		for (int k = 0; k < spawnCount; k++) {
 			// 找非激活状态空位生成
 			for (int i = 0; i < MAX_OBS; i++) {
@@ -445,7 +446,7 @@ void UpdatePowers(struct Twin* yang, struct Twin* yin, clock_t totalFrames) {
 				// 随记道具类型
 				// 可能大概有BUG，比如重复道具但是检测到不满足条件不会生成？
 				int type;
-				while(true) {
+				while (true) {
 					type = rand() % 4;
 					if (!wallActive && type == WALL_BREAKER)
 						continue;
@@ -516,7 +517,7 @@ void UpdatePowers(struct Twin* yang, struct Twin* yin, clock_t totalFrames) {
 					printf("[LOG]:清除所有障碍物\n");
 					break;
 				}
-				
+
 				powers[i].active = false; // 道具被捕获后消失
 			}
 			// 回收逻辑
@@ -528,7 +529,7 @@ void UpdatePowers(struct Twin* yang, struct Twin* yin, clock_t totalFrames) {
 
 // 绘制障碍物
 void DrawObstacles() {
-	if(yangHasShield || yinHasShield)
+	if (yangHasShield || yinHasShield)
 		setlinestyle(PS_DASH, 2);
 	for (int i = 0; i < MAX_OBS; i++) {
 		if (obs[i].active) {
@@ -569,10 +570,14 @@ void DrawHUD() {
 
 int main() {
 	srand((unsigned)time(NULL));
-	//if (ShowConsole) // 没效果
-	//	initgraph(800, 600, EX_NOMINIMIZE | EX_SHOWCONSOLE); //EX_NOCLOSE | EX_NOMINIMIZE
-	//else
-		initgraph(800, 600, EX_NOMINIMIZE);
+	initgraph(800, 600, EX_NOMINIMIZE);
+	SetWindowText(GetHWnd(), _T("两球一败涂地 - Two Ball Run"));
+	// 下面是添加图标
+	HINSTANCE hInst = GetModuleHandle(NULL);	// 获取当前实例句柄
+	HICON hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON1));	// 加载资源中的图标
+	SendMessage(GetHWnd(), WM_SETICON, ICON_BIG, (LPARAM)hIcon);	// 设置大图标
+	SendMessage(GetHWnd(), WM_SETICON, ICON_SMALL, (LPARAM)hIcon);	// 设置小图标
+
 	setbkmode(TRANSPARENT);
 	State gameState = MENU; // 初始为菜单界面
 
@@ -659,11 +664,12 @@ int main() {
 							printf("    =====================================\n");
 							HWND hwnd = GetHWnd();
 							MessageBox(hwnd, _T("Debug Console Activated!\nWelcome back, Inochi."), _T("Easter Egg"), MB_OK | MB_ICONINFORMATION);
+							SetWindowText(hwndConsole, _T("Two Ball Run Console"));
 						}
 						else {
 							ShowWindow(hwndConsole, SW_HIDE);
-							HWND hwnd = GetHWnd();
-							MessageBox(hwnd, _T("Debug Console Deactivated."), _T("Easter Egg"), MB_OK);
+							//HWND hwnd = GetHWnd();
+							//MessageBox(hwnd, _T("Debug Console Deactivated."), _T("Easter Egg"), MB_OK);
 						}
 					}
 					if (isMouseInArea(msg.x, msg.y, getwidth() / 2 - 60, getheight() / 2 - 30, 120, 40)) {
@@ -799,12 +805,12 @@ int main() {
 			outtextxy(getwidth() / 2 - 100, getheight() / 2 - 150, _T("游戏结束！"));
 			sprintf(tips, "最终得分：%.0f", totalScore);
 			outtextxy((getwidth() - textwidth(tips)) / 2, getheight() / 2 - 100, tips);
-			if (totalFrames /60 < 30)
-				sprintf(tips,"总共坚持了 %d S,不会是一个人玩的吧？", totalFrames / 60);
+			if (totalFrames / 60 < 30)
+				sprintf(tips, "总共坚持了 %d S,不会是一个人玩的吧？", totalFrames / 60);
 			else if (totalFrames / 60 < 60)
-				sprintf(tips,"总共坚持了 %d S, 应该看到了全部彩蛋？", totalFrames / 60);
+				sprintf(tips, "总共坚持了 %d S, 应该看到了全部彩蛋？", totalFrames / 60);
 			else if (totalFrames / 60 < 90)
-				sprintf(tips,"总共坚持了 %d S, 不要小瞧我们的羁绊啊！！！", totalFrames / 60);
+				sprintf(tips, "总共坚持了 %d S, 不要小瞧我们的羁绊啊！！！", totalFrames / 60);
 			else
 				sprintf(tips, "{\"comment\":\"开了\",\"Time\":%d s}", totalFrames / 60);
 			outtextxy((getwidth() - textwidth(tips)) / 2, getheight() / 2 - 50, tips);
