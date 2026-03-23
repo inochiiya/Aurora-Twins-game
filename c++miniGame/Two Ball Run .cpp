@@ -279,7 +279,7 @@ void DrawYinStar(struct Twin* yin) {
 // 处理键盘输入
 void HandleInput(struct Twin* yang, struct Twin* yin) {
 	float moveSpeed = 5.0f;
-	// 通过虚拟键判定，可以无冲
+	// 通过虚拟键判定，无冲
 	// 玩家 1(W A S D)
 	if (GetAsyncKeyState('W') & 0x8000) yang->y -= moveSpeed;
 	if (GetAsyncKeyState('S') & 0x8000) yang->y += moveSpeed;
