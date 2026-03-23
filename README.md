@@ -4,6 +4,11 @@
 游戏时有概率生成具有特殊效果的道具，道具可以帮助玩家更顺利的度过袭来的障碍物
 游戏目标：获取更高的分数并存活更久
 
+## 注意事项
+1. 游戏目录下 assets目录不可修改移动，内有游戏运行时bgm音频资源，如果修改无法再播放BGM
+2. 如需更换音乐需手动替换 "assets/M500003kNDLh2UjjDP.mp3"文件，名字不可更改
+3. GitHub：[仓库](https://github.com/inochiiya/Aurora-Twins-game/)
+
 ## 概览
 使用 [EasyX绘图库](https://easyx.cn/) 实现界面UI，通过GetAsyncKeyState函数处理按键输入，支持多键同时按下处理
 
